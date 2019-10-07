@@ -1,0 +1,48 @@
+﻿---
+BasedOnStyle: Google
+AccessModifierOffset: '-4'
+AlignAfterOpenBracket: DontAlign
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+AlwaysBreakAfterReturnType: None
+AllowShortIfStatementsOnASingleLine: false
+BreakBeforeBraces: Allman
+ColumnLimit: '180'
+Cpp11BracedListStyle: false
+FixNamespaceComments: true
+IndentCaseLabels: 'false'
+IndentWidth: '4'
+NamespaceIndentation: Inner
+SpacesInParentheses: 'false'
+Standard: Auto
+SortIncludes: true
+TabWidth: '4'
+UseTab: Never
+IncludeCategories:
+  - Regex:           '^((<|")(stdafx\.h)|(StdAfx\.h))'
+    Priority:        0
+  - Regex:           '^(<|")modules/'
+    Priority:        4
+  - Regex:           '^((<|")(Q))'
+    Priority:        10
+  - Regex:           '^(<tbb|boost)'
+    Priority:        11
+  - Regex:           '^(<)'
+    Priority:        15
+  - Regex:           '.*'
+    Priority:        3
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  SplitEmptyFunction: false
+  SplitEmptyNamespace: true
+  
+  
