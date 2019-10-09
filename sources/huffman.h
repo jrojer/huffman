@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 namespace huffman
@@ -224,4 +225,36 @@ std::vector<uint8_t> Decode(const std::vector<uint8_t>& chunk)
     DeleteTree(root);
     return result;
 }
+
+struct CodeItem
+{
+    size_t      value;
+    std::string code;
+};
+
+void PrintCodeTable(const std::vector<uint8_t>& chunk, std::ostream& out)
+{
+    const auto hist       = MakeHistogram(chunk);
+    const auto tree       = MakeTree(hist);
+    const auto code_table = GetCodeTable(tree);
+
+    std::vector<CodeItem> table;
+    for (size_t i = 0; i < kAlphabetSize; ++i)
+    {
+        if (code_table[i].empty())
+            continue;
+
+        std::string s;
+        for (int x : code_table[i]) s += x == 0 ? "0" : "1";
+        table.push_back({ i, s });
+    }
+
+    std::sort(table.begin(), table.end(), [](const auto& a, const auto& b) { return a.code < b.code; });
+
+    for (const auto& item : table)
+    {
+        out << item.code << " " << item.value << std::endl;
+    }
+}
+
 }  // namespace huffman

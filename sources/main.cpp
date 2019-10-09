@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <string>
 #include "huffman.h"
 
 using namespace huffman;
@@ -67,6 +69,32 @@ void Test1(const Parameters& params)
     std::cout << "output " << params.output_filename << std::endl;
 }
 
+std::vector<uint8_t> ReadFile(const std::string& filename)
+{
+    const size_t max_filesize = 5 * 1024 * 1024;
+    std::ifstream input( filename, std::ios::binary);
+    if(std::ios::failbit)
+    {
+        throw std::invalid_argument("cannot open file " + filename);
+    }
+    if(input.tellg() > max_filesize)
+    {
+        throw std::invalid_argument("input file is too large: " + filename);
+    }
+    std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(input), {});
+    return buffer;
+}
+
+void WriteFile(const std::vector<uint8_t>& file, const std::string& filename)
+{
+    std::ofstream output( filename, std::ios::binary);
+    if(std::ios::failbit)
+    {
+        throw std::invalid_argument("cannot open file " + filename);
+    }
+    std::copy(file.cbegin(),file.cend(), std::ostreambuf_iterator<char>(output));
+}
+
 int main(int argc, char **argv)
 {
     auto params = ParseCmdArgs(argc, argv);
@@ -76,7 +104,24 @@ int main(int argc, char **argv)
         std::cout << "Usage: huffman [-v] (-c|-d) input_file output_file" << std::endl;
         return 0;
     }
+    
     Test1(params);
+
+    auto file = ReadFile(params.input_filename);
+
+    if(params.verbose)
+    {
+        PrintCodeTable(file,std::cout);
+    }
+
+    if(params.kEncode)
+    {
+
+    }
+    else
+    {
+
+    }
 
     return 0;
 }
