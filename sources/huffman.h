@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <vector>
+#include <cstring>
 
 namespace huffman
 {
@@ -9,8 +10,8 @@ const size_t kByteLen      = 8;
 const size_t kAlphabetSize = 256;
 struct HistItem
 {
-    uint8_t value;
-    size_t  weight;
+    uint8_t  value;
+    uint64_t weight;
 };
 
 bool operator<(const HistItem& lhs, const HistItem& rhs)
@@ -36,11 +37,11 @@ std::vector<HistItem> MakeHistogram(const std::vector<uint8_t>& items)
 
 struct Node
 {
-    uint8_t value;
-    size_t  weight;
-    Node*   left;
-    Node*   right;
-    bool    visited;
+    uint8_t  value;
+    uint64_t weight;
+    Node*    left;
+    Node*    right;
+    bool     visited;
 };
 
 Node* MakeTree(const std::vector<HistItem>& hist)
@@ -122,6 +123,13 @@ void DeleteTree(Node* root)
     }
 }
 
+int GetBit(const uint8_t* src, size_t pos)
+{
+    size_t byte_pos = pos / kByteLen;
+    size_t bit_pos  = pos % kByteLen;
+    return (src[byte_pos] >> bit_pos) & 1;
+}
+
 void SetBit(uint8_t* dst, size_t pos, int bit)
 {
     size_t byte_pos = pos / kByteLen;
@@ -130,13 +138,29 @@ void SetBit(uint8_t* dst, size_t pos, int bit)
     dst[byte_pos] ^= (bit << bit_pos);
 }
 
-void WriteSizeT(uint8_t* arr, size_t s)
+void WriteUint64T(uint8_t* arr, uint64_t s)
 {
-    uint8_t* a = reinterpret_cast<uint8_t*>(&s);
-    for (size_t i = 0; i < sizeof(size_t); ++i)
+    memcpy(arr,&s,sizeof(uint64_t));
+}
+
+uint64_t ReadUint64T(const uint8_t* arr)
+{
+    uint64_t res;
+    memcpy(&res,arr,sizeof(uint64_t));
+    return res;
+}
+
+std::vector<HistItem> ReadHistogram(uint8_t* src)
+{
+    std::vector<HistItem> hist;
+    for (auto& x : hist)
     {
-        arr[i] = a[i];
+        x.value = *src;
+        ++src;
+        // ... 
+        src += sizeof(size_t);
     }
+    return hist;
 }
 
 void WriteHistogram(uint8_t* dst, const std::vector<HistItem>& hist)
@@ -145,9 +169,28 @@ void WriteHistogram(uint8_t* dst, const std::vector<HistItem>& hist)
     {
         *dst = x.value;
         ++dst;
-        WriteSizeT(dst, x.weight);
+        WriteUint64T(dst, x.weight);
         dst += sizeof(size_t);
     }
+}
+
+struct MetaObject
+{
+    std::vector<HistItem> hist;
+    uint64_t              bitlen;
+    static const size_t   hist_size = (sizeof(uint8_t) + sizeof(uint64_t)) * kAlphabetSize;
+    static const size_t   size      = hist_size + sizeof(uint64_t);
+};
+
+MetaObject ReadMetaObject(const uint8_t* src)
+{
+
+}
+
+void WriteMetaObject(uint8_t* dst, const MetaObject& obj)
+{
+    WriteHistogram(dst, obj.hist);
+    WriteUint64T(dst + MetaObject::hist_size, obj.bitlen);
 }
 
 std::vector<uint8_t> Encode(const std::vector<uint8_t>& chunk)
@@ -156,15 +199,11 @@ std::vector<uint8_t> Encode(const std::vector<uint8_t>& chunk)
     const auto tree       = MakeTree(hist);
     const auto code_table = GetCodeTable(tree);
 
-    const size_t         histogram_size = (sizeof(uint8_t) + sizeof(size_t)) * kAlphabetSize;
-    const size_t         meta_data_size = histogram_size + sizeof(size_t);
-    std::vector<uint8_t> result(meta_data_size + chunk.size());
+    std::vector<uint8_t> result(MetaObject::size + chunk.size());
 
-    WriteHistogram(result.data(), hist);
+    uint64_t result_bitlen = 0;
 
-    size_t result_bitlen = 0;
-
-    uint8_t* dst = result.data() + meta_data_size;
+    uint8_t* dst = result.data() + MetaObject::size;
     for (uint8_t x : chunk)
     {
         for (int bit : code_table[x])
@@ -174,16 +213,35 @@ std::vector<uint8_t> Encode(const std::vector<uint8_t>& chunk)
         }
     }
     DeleteTree(tree);
-    result.resize(meta_data_size + (result_bitlen + kByteLen - 1) / kByteLen);
-    WriteSizeT(result.data() + histogram_size, result_bitlen);
+    result.resize(MetaObject::size + (result_bitlen + kByteLen - 1) / kByteLen);
+    WriteMetaObject(result.data(), { hist, result_bitlen });
     return result;
 }
 
 std::vector<uint8_t> Decode(const std::vector<uint8_t>& chunk)
 {
-    // for
-    // get bit, traversing tree
+    auto meta = ReadMetaObject(chunk.data());
+    auto root = MakeTree(meta.hist);
 
-    return {};
+    const uint8_t* src = chunk.data() + MetaObject::size;
+
+    Node* node = root;
+
+    std::vector<uint8_t> result;
+    for (size_t i = 0; i < meta.bitlen; ++i)
+    {
+        int bit = GetBit(src, i);
+        if (node->left && node->right)
+        {
+            node = bit == 0 ? node->left : node->right;
+            if (!(node->left && node->right))
+            {
+                result.push_back(node->value);
+                node = root;
+            }
+        }
+    }
+    DeleteTree(root);
+    return result;
 }
 }  // namespace huffman
