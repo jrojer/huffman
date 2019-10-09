@@ -1,55 +1,44 @@
 #pragma once
 #include <algorithm>
 #include <array>
-#include <vector>
 #include <cstring>
+#include <vector>
 
 namespace huffman
 {
 const size_t kByteLen      = 8;
 const size_t kAlphabetSize = 256;
-struct HistItem
-{
-    uint8_t  value;
-    uint64_t weight;
-};
 
-bool operator<(const HistItem& lhs, const HistItem& rhs)
-{
-    return lhs.weight > rhs.weight;
-}
+using histogram_t = std::array<uint32_t, kAlphabetSize>;
 
-std::vector<HistItem> MakeHistogram(const std::vector<uint8_t>& items)
+histogram_t MakeHistogram(const std::vector<uint8_t>& items)
 {
-    std::array<size_t, kAlphabetSize> hist = {};
+    histogram_t hist = {};
     for (auto x : items)
     {
         ++hist[x];
     }
-    std::vector<HistItem> res;
-    for (int i = 0; i < kAlphabetSize; ++i)
-    {
-        if (hist[i] > 0)
-            res.push_back({ static_cast<uint8_t>(i), hist[i] });
-    }
-    return res;
+    return hist;
 }
 
 struct Node
 {
     uint8_t  value;
-    uint64_t weight;
+    uint32_t weight;
     Node*    left;
     Node*    right;
     bool     visited;
 };
 
-Node* MakeTree(const std::vector<HistItem>& hist)
+Node* MakeTree(const histogram_t& hist)
 {
     std::vector<Node*> heap;
-    for (auto x : hist)
+    for (size_t i = 0; i < hist.size(); ++i)
     {
-        heap.push_back(new Node{ x.value, x.weight, nullptr, nullptr, false });
+        uint8_t  value  = static_cast<uint8_t>(i);
+        uint32_t weight = hist[i];
+        if (weight > 0)
+            heap.push_back(new Node{ value, weight, nullptr, nullptr, false });
     }
     const auto cmp = [](Node* a, Node* b) { return a->weight > b->weight; };
     std::make_heap(heap.begin(), heap.end(), cmp);
@@ -138,59 +127,50 @@ void SetBit(uint8_t* dst, size_t pos, int bit)
     dst[byte_pos] ^= (bit << bit_pos);
 }
 
-void WriteUint64T(uint8_t* arr, uint64_t s)
+histogram_t ReadHistogram(const uint8_t* src)
 {
-    memcpy(arr,&s,sizeof(uint64_t));
-}
-
-uint64_t ReadUint64T(const uint8_t* arr)
-{
-    uint64_t res;
-    memcpy(&res,arr,sizeof(uint64_t));
-    return res;
-}
-
-std::vector<HistItem> ReadHistogram(uint8_t* src)
-{
-    std::vector<HistItem> hist;
-    for (auto& x : hist)
+    histogram_t hist;
+    for (size_t i = 0; i < hist.size(); ++i)
     {
-        x.value = *src;
-        ++src;
-        // ... 
-        src += sizeof(size_t);
+        uint8_t  value = *src;
+        uint32_t weight;
+        memcpy(&weight, src + sizeof(value), sizeof(weight));
+        hist[value] = weight;
+        src += sizeof(weight) + sizeof(value);
     }
     return hist;
 }
 
-void WriteHistogram(uint8_t* dst, const std::vector<HistItem>& hist)
+void WriteHistogram(uint8_t* dst, const histogram_t& hist)
 {
-    for (auto x : hist)
+    for (size_t i = 0; i < hist.size(); ++i)
     {
-        *dst = x.value;
-        ++dst;
-        WriteUint64T(dst, x.weight);
-        dst += sizeof(size_t);
+        *dst = static_cast<uint8_t>(i);
+        memcpy(dst + sizeof(uint8_t), &hist[i], sizeof(hist[i]));
+        dst += sizeof(hist[i]) + sizeof(uint8_t);
     }
 }
 
 struct MetaObject
 {
-    std::vector<HistItem> hist;
-    uint64_t              bitlen;
-    static const size_t   hist_size = (sizeof(uint8_t) + sizeof(uint64_t)) * kAlphabetSize;
-    static const size_t   size      = hist_size + sizeof(uint64_t);
+    histogram_t         hist;
+    uint64_t            bitlen;
+    static const size_t hist_size = kAlphabetSize * (sizeof(uint32_t) + sizeof(uint8_t));
+    static const size_t size      = hist_size + sizeof(bitlen);
 };
 
 MetaObject ReadMetaObject(const uint8_t* src)
 {
-
+    auto     hist = ReadHistogram(src);
+    uint64_t bitlen;
+    memcpy(&bitlen, src + MetaObject::hist_size, sizeof(bitlen));
+    return { hist, bitlen };
 }
 
 void WriteMetaObject(uint8_t* dst, const MetaObject& obj)
 {
     WriteHistogram(dst, obj.hist);
-    WriteUint64T(dst + MetaObject::hist_size, obj.bitlen);
+    memcpy(dst + MetaObject::hist_size, &obj.bitlen, sizeof(obj.bitlen));
 }
 
 std::vector<uint8_t> Encode(const std::vector<uint8_t>& chunk)
