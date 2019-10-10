@@ -134,7 +134,14 @@ int main(int argc, char **argv)
 
     if(params.verbose)
     {
-        PrintCodeTable(file,std::cout);
+        if(params.mode == Parameters::kEncode)
+        {
+            PrintCodeTable(file,std::cout);
+        }
+        else
+        {
+            PrintCodeTable(output.buffer,std::cout);
+        }
     }
 
     try

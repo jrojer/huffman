@@ -52,13 +52,22 @@ Node* MakeTree(const histogram_t& hist)
         heap.push_back(new Node{ 0, n1->weight + n2->weight, n1, n2, false });
         std::push_heap(heap.begin(), heap.end(), cmp);
     }
-    Node* root = heap.front();
+    Node* root = heap.empty() ? nullptr : heap.front();
     return root;
 }
 
 std::array<std::vector<int>, kAlphabetSize> GetCodeTable(Node* root)
 {
     std::array<std::vector<int>, kAlphabetSize> res = {};
+    if(root == nullptr)
+    {
+        return res;
+    }
+    if(!(root->left && root->right))
+    {
+        res[root->value] = {0};
+        return res;
+    }
     std::vector<Node*>                          stack(1, root);
     std::vector<int>                            code;
     while (!stack.empty())
@@ -209,14 +218,19 @@ ProcessResult Decode(const std::vector<uint8_t>& chunk)
     std::vector<uint8_t> result;
     for (size_t i = 0; i < meta.bitlen; ++i)
     {
+        if (!(node->left && node->right)) // leaf
+        {
+            result.push_back(node->value);
+            node    = root;
+        }
         int bit = GetBit(src, i);
-        if (node->left && node->right)
+        if (node->left && node->right) // not leaf
         {
             node = bit == 0 ? node->left : node->right;
-            if (!(node->left && node->right))
+            if (!(node->left && node->right)) // leaf
             {
                 result.push_back(node->value);
-                node = root;
+                node    = root;
             }
         }
     }
