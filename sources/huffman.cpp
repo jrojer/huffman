@@ -267,6 +267,7 @@ void PrintCodeTable(const std::vector<uint8_t>& chunk, std::ostream& out)
     {
         out << item.code << " " << item.value << std::endl;
     }
+    DeleteTree(tree);
 }
 
 }  // namespace huffman
