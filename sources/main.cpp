@@ -71,9 +71,9 @@ void Test1(const Parameters& params)
 
 std::vector<uint8_t> ReadFile(const std::string& filename)
 {
-    const size_t max_filesize = 5 * 1024 * 1024;
+    const int max_filesize = 5 * 1024 * 1024;
     std::ifstream input( filename, std::ios::binary);
-    if(std::ios::failbit)
+    if(input.fail())
     {
         throw std::invalid_argument("cannot open file " + filename);
     }
@@ -88,7 +88,7 @@ std::vector<uint8_t> ReadFile(const std::string& filename)
 void WriteFile(const std::vector<uint8_t>& file, const std::string& filename)
 {
     std::ofstream output( filename, std::ios::binary);
-    if(std::ios::failbit)
+    if(output.fail())
     {
         throw std::invalid_argument("cannot open file " + filename);
     }
@@ -105,22 +105,46 @@ int main(int argc, char **argv)
         return 0;
     }
     
-    Test1(params);
+    //Test1(params);
 
-    auto file = ReadFile(params.input_filename);
+    std::vector<uint8_t> file;
+    try
+    {
+        file = ReadFile(params.input_filename);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return 0;
+    }
+
+    ProcessResult output;
+    if(params.mode == Parameters::kEncode)
+    {
+        output = Encode(file);
+    }
+    else
+    {
+        output = Decode(file);
+    }
+
+    std::cout << output.raw_size << std::endl;
+    std::cout << output.processed_size << std::endl;
+    std::cout << output.meta_size << std::endl;
 
     if(params.verbose)
     {
         PrintCodeTable(file,std::cout);
     }
 
-    if(params.kEncode)
+    try
     {
-
+        WriteFile(output.buffer,params.output_filename);
     }
-    else
+    catch(const std::exception& e)
     {
-
+        std::cerr << e.what() << '\n';
+        return 0;
     }
 
     return 0;
