@@ -28,6 +28,7 @@ struct Node
     Node*    left;
     Node*    right;
     bool     visited;
+    int counter;
 };
 
 struct HeapCmp
@@ -36,7 +37,7 @@ struct HeapCmp
     {
         if(a->weight == b->weight)
         {
-            return a > b;
+            return a->counter > b->counter;
         }
         return a->weight > b->weight; 
     }
@@ -46,12 +47,14 @@ Node* MakeTree(const histogram_t& hist)
 {
     std::priority_queue<Node*, std::vector<Node*>, HeapCmp> heap; 
 
+    int counter = 0;
+
     for (size_t i = 0; i < hist.size(); ++i)
     {
         uint8_t  value  = static_cast<uint8_t>(i);
         uint32_t weight = hist[i];
         if (weight > 0)
-            heap.push(new Node{ value, weight, nullptr, nullptr, false });
+            heap.push(new Node{ value, weight, nullptr, nullptr, false, counter++ });
     }
     while (heap.size() > 1)
     {
@@ -59,7 +62,7 @@ Node* MakeTree(const histogram_t& hist)
         heap.pop();
         Node* n2 = heap.top();
         heap.pop();
-        heap.push(new Node{ 0, n1->weight + n2->weight, n1, n2, false });
+        heap.push(new Node{ 0, n1->weight + n2->weight, n1, n2, false, counter++ });
     }
     Node* root = heap.empty() ? nullptr : heap.top();
     return root;
