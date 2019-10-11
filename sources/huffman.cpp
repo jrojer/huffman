@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <queue>
 
 namespace huffman
 {
@@ -29,30 +30,38 @@ struct Node
     bool     visited;
 };
 
+struct HeapCmp
+{
+    bool operator()(Node* a, Node* b)
+    {
+        if(a->weight == b->weight)
+        {
+            return a > b;
+        }
+        return a->weight > b->weight; 
+    }
+};
+
 Node* MakeTree(const histogram_t& hist)
 {
-    std::vector<Node*> heap;
+    std::priority_queue<Node*, std::vector<Node*>, HeapCmp> heap; 
+
     for (size_t i = 0; i < hist.size(); ++i)
     {
         uint8_t  value  = static_cast<uint8_t>(i);
         uint32_t weight = hist[i];
         if (weight > 0)
-            heap.push_back(new Node{ value, weight, nullptr, nullptr, false });
+            heap.push(new Node{ value, weight, nullptr, nullptr, false });
     }
-    const auto cmp = [](Node* a, Node* b) { return a->weight > b->weight; };
-    std::make_heap(heap.begin(), heap.end(), cmp);
     while (heap.size() > 1)
     {
-        Node* n1 = heap.front();
-        std::pop_heap(heap.begin(), heap.end(), cmp);
-        heap.pop_back();
-        Node* n2 = heap.front();
-        std::pop_heap(heap.begin(), heap.end(), cmp);
-        heap.pop_back();
-        heap.push_back(new Node{ 0, n1->weight + n2->weight, n1, n2, false });
-        std::push_heap(heap.begin(), heap.end(), cmp);
+        Node* n1 = heap.top();
+        heap.pop();
+        Node* n2 = heap.top();
+        heap.pop();
+        heap.push(new Node{ 0, n1->weight + n2->weight, n1, n2, false });
     }
-    Node* root = heap.empty() ? nullptr : heap.front();
+    Node* root = heap.empty() ? nullptr : heap.top();
     return root;
 }
 
