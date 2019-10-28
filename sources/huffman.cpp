@@ -7,7 +7,6 @@
 namespace huffman
 {
 const size_t kByteLen      = 8;
-const size_t kAlphabetSize = 256;
 
 using histogram_t = std::array<uint32_t, kAlphabetSize>;
 
@@ -215,7 +214,7 @@ ProcessResult Encode(const std::vector<uint8_t>& chunk)
     const size_t compressed_size = (result_bitlen + kByteLen - 1) / kByteLen;
     result.resize(MetaObject::size + compressed_size);
     WriteMetaObject(result.data(), { hist, result_bitlen });
-    return { chunk.size(), compressed_size, MetaObject::size, result };
+    return { chunk.size(), compressed_size, MetaObject::size, result, code_table };
 }
 
 ProcessResult Decode(const std::vector<uint8_t>& chunk)
@@ -246,8 +245,9 @@ ProcessResult Decode(const std::vector<uint8_t>& chunk)
             }
         }
     }
+    const auto& code_table = GetCodeTable(root);
     DeleteTree(root);
-    return { chunk.size() - MetaObject::size, result.size(), MetaObject::size, result };
+    return { chunk.size() - MetaObject::size, result.size(), MetaObject::size, result, code_table };
 }
 
 struct CodeItem
@@ -256,12 +256,8 @@ struct CodeItem
     std::string code;
 };
 
-void PrintCodeTable(const std::vector<uint8_t>& chunk, std::ostream& out)
+void PrintCodeTable(const std::array<std::vector<int>, kAlphabetSize>& code_table, std::ostream& out)
 {
-    const auto hist       = MakeHistogram(chunk);
-    const auto tree       = MakeTree(hist);
-    const auto code_table = GetCodeTable(tree);
-
     std::vector<CodeItem> table;
     for (size_t i = 0; i < kAlphabetSize; ++i)
     {
