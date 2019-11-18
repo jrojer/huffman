@@ -275,7 +275,6 @@ void PrintCodeTable(const std::array<std::vector<int>, kAlphabetSize>& code_tabl
     {
         out << item.code << " " << item.value << std::endl;
     }
-    DeleteTree(tree);
 }
 
 }  // namespace huffman
