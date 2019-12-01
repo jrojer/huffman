@@ -1,2 +1,2 @@
-# huffman
-Домашнее задание по C++,  Хаффман, 2 октября 2019
+Simple file compressor implementing Huffman encoding.  
+Usage: `huffman [-v] (-c|-d) input_file output_file`.
